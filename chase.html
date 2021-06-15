@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<!--
+
+||    ||  NOAH    SWINDLER
+||||  ||
+||  ||||  ||||||  ||||||
+||    ||  ||  ||  ||  ||
+||    ||  ||||||  ||||||
+                      ||
+                      ||
+                      |||
+                      ||
+                      |
+
+-->
+<html>
+  <head>
+    <title>Chase!</title>
+  </head>
+  <body id="body" style="background-color:rgb(50,50,56)">
+    <div style="text-align:center;font-family:Verdana">
+      <p id="pause"></p>
+      <p id="lives" style="color:rgb(200,50,50);font-size:30px"></p>
+      <canvas id="canvas" width="100" height="100" style="background-color:rgb(0,0,0);border:5px solid rgb(30,30,34);margin:0px;color:white;text-align:center;margin-top:10px;font-size:20px">ERROR code 400<br><br>Your browser cannot render this game<br>as HTML5 Canvas is not supported.</canvas>
+      <p style="color:rgb(100,100,100);font-size:15px;margin-top:0px;text-align:center">A Javascript HTML5 Canvas game</p>
+    </div>
+    <script>
+
+//  
+// Copyright © 2019 Noah Swindler. All rights reserved.
+// - Noah Swindler
+//
+//
+// Chase! - A JS game
+//
+
+/*
+Variables
+Objects
+Arrays
+Other definitions
+*/
+
+var game;
+var started = "false";
+var level = 1;
+var time = 0;
+var i;
+
+// Aesthetics, visuals, dimensions, canvas, classes
+var w = window;
+var s = screen;
+var margin = s.width / 20;
+var c = document.getElementById("canvas");
+c.height = s.height / 2;
+c.width = s.width / 2;
+var ctx = c.getContext("2d");
+var screen = {
+  r: 10, g: 10, b: 15
+}
+
+// Player
+var trail = [];
+var trailLength = 30;
+var centerscreenW = c.width / 2 - 5;
+var centerscreenH = c.height / 2 - 5;
+var player = {
+  x: centerscreenW,
+  y: centerscreenH,
+  startPos: {x: centerscreenW, y: centerscreenH},
+  size: 10,
+  speed: 0,
+  lives: 3,
+  r: 255,
+  g: 255,
+  b: 255
+};
+//
+// addSpeed Boolean 0/1
+//
+var addSpeedBool = 0;
+var decelSpeed = 0.075;
+var accel = {
+  left: 0,
+  right: 0,
+  up: 0,
+  down: 0,
+  speed: 0.05,
+  addSpeed: 1,
+  cap: 7,
+};
+var fast = "false";
+
+// Obstacle
+var obstacles = [
+  {x: 50, y: 50,
+   startPos: {x: 50, y: 50},
+   baseSpeed: 0.1, speed: 0.1, speedAdd: 0.000001, 
+   dir: {x: "", y: ""}, cap: 0.75,
+   accel: {left: 0, right: 0, up: 0, down: 0, baseSpeed: 0.01, speed: 0.01, speedAdd: 0.000001, cap: 0.04},
+   r: 255, g: 0, b: 0, 
+   trail: []},
+  {x: c.width - 50, y: 50, 
+   startPos: {x: c.width - 50, y: 50},
+   baseSpeed: 0.3, speed: 0.3, speedAdd: 0.00000075, 
+   dir: {x: "", y: ""}, cap: 1, 
+   accel: {left: 0, right: 0, up: 0, down: 0, baseSpeed: 0.0075, speed: 0.0075, speedAdd: 0.00000075, cap: 0.03},
+   r: 255, g: 0, b: 0, 
+   trail: []},
+  {x: 50, y: c.height - 50, 
+   startPos: {x: 50, y: c.height - 50},
+   baseSpeed: 0.5, speed: 0.5, speedAdd: 0.0000005, 
+   dir: {x: "", y: ""}, cap: 1.25, 
+   accel: {left: 0, right: 0, up: 0, down: 0, baseSpeed: 0.005, speed: 0.005, speedAdd: 0.0000005, cap: 0.02},
+   r: 255, g: 0, b: 0, 
+   trail: []},
+  {x: c.width - 50, y: c.height - 50, 
+   startPos: {x: c.width - 50, y: c.height - 50},
+   baseSpeed: 0.25, speed: 0.25, speedAdd: 0.00000025, 
+   dir: {x: "", y: ""}, cap: 1.5,
+   accel: {left: 0, right: 0, up: 0, down: 0, baseSpeed: 0.0025, speed: 0.0025, speedAdd: 0.00000025, cap: 0.01},
+   r: 255, g: 0, b: 0, 
+   trail: []},
+  {x: (Math.floor(Math.random() * c.width - margin) + margin), 
+   y: (Math.floor(Math.random() * c.width - margin) + margin),
+   startPos: {x: (Math.floor(Math.random() * c.width - margin) + margin),
+              y: (Math.floor(Math.random() * c.height - margin) + margin)},
+   baseSpeed: 0.25, speed: 0.25, speedAdd: 0.001, 
+   dir: {x: "right", y: "down"}, 
+   accel: {left: 0, right: 0, up: 0, down: 0, speed: 0.05},
+   r: 225, g: 255, b: 0, 
+   cap: 3, trail: []}, 
+  {x: (Math.floor(Math.random() * c.width - margin) + margin), 
+   y: (Math.floor(Math.random() * c.width - margin) + margin),
+   startPos: {x: (Math.floor(Math.random() * c.width - margin) + margin),
+              y: (Math.floor(Math.random() * c.height - margin) + margin)},
+   baseSpeed: 0.25, speed: 0.25, speedAdd: 0.001, 
+   dir: {x: "left", y: "up"}, 
+   accel: {left: 0, right: 0, up: 0, down: 0, speed: 0.05},
+   r: 255, g: 255, b: 0, 
+   cap: 3, trail: []}  
+]; 
+var obstacle = {speed: 2, size: 5, border: 2.5, speedAdd: 0.00025, decelSpeed: 0.01, num: 2};
+
+// Game mechanics
+function accel() {
+  if (dir == "left" || dir == "right") {
+    accel.x += accel.speed;
+    if (accel.y > 0) {
+      accel.y -= accel.speed;
+    }
+  } else if (dir == "up" || dir == "down") {
+    accel.y += accel.speed;
+    if (accel.x > 0) {
+      accel.x -= accel.speed;
+    }
+  }
+}
+
+// Main game loop, executes every ms
+function runGameLoop() {
+  
+  // Difficulty progression
+  if (started == "true") {
+    for (i = 0; i < 4; i++) {
+      if (obstacles[i].accel.speed < obstacles[i].accel.cap) {
+        obstacles[i].accel.speed += obstacles[i].accel.speedAdd;
+      }
+    }
+    for (i = 4; i < 6; i++) {
+      if (obstacles[i].speed < obstacles[i].cap) {
+        obstacles[i].speed += obstacles[i].speedAdd;
+      }
+    }
+  }
+  
+  // Player movement
+  if (dir == "left") {
+    if (accel.left < accel.cap) {
+      accel.left += accel.speed;
+    } else {
+      accel.left = accel.cap;
+    }
+    if (accel.right > 0) {
+      accel.right -= decelSpeed;
+    }
+    if (accel.up > 0) {
+      accel.up -= decelSpeed;
+    }
+    if (accel.down > 0) {
+      accel.down -= decelSpeed;
+    }
+  } else if (dir == "up") {
+    if (accel.up < accel.cap) {
+      accel.up += accel.speed;
+    } else {
+      accel.up = accel.cap;
+    }
+    if (accel.left > 0) {
+      accel.left -= decelSpeed;
+    }
+    if (accel.right > 0) {
+      accel.right -= decelSpeed;
+    }
+    if (accel.down > 0) {
+      accel.down -= decelSpeed;
+    }
+  } else if (dir == "right") {
+    if (accel.right < accel.cap) {
+      accel.right += accel.speed;
+    } else {
+      accel.right = accel.cap;
+    }
+    if (accel.left > 0) {
+      accel.left -= decelSpeed;
+    }
+    if (accel.up > 0) {
+      accel.up -= decelSpeed;
+    }
+    if (accel.down > 0) {
+      accel.down -= decelSpeed;
+    }
+  } else if (dir == "down") {
+    if (accel.down < accel.cap) {
+      accel.down += accel.speed;
+    } else {
+      accel.down = accel.cap;
+    }
+    if (accel.left > 0) {
+      accel.left -= decelSpeed;
+    }
+    if (accel.up > 0) {
+      accel.up -= decelSpeed;
+    }
+    if (accel.right > 0) {
+      accel.right -= decelSpeed;
+    }
+  }
+  player.x += accel.right;
+  player.x -= accel.left;
+  player.y += accel.down;
+  player.y -= accel.up;
+  if (addSpeedBool == 1) {
+    if (dir == "left") {
+      player.x -= accel.addSpeed;
+    } else if (dir == "right") {
+      player.x += accel.addSpeed;
+    } else if (dir == "up") {
+      player.y -= accel.addSpeed;
+    } else if (dir == "down") {
+      player.y += accel.addSpeed;
+    }
+  }
+  
+  // AI
+  var i;  
+  if (started == "true") {
+    for (i = 0; i < 4; i++) {
+      if (obstacles[i].x < player.x) {
+        obstacles[i].dir.x = "right";
+      } else if (obstacles[i].x > player.x) {
+        obstacles[i].dir.x = "left";
+      } 
+      if (obstacles[i].y > player.y) {
+        obstacles[i].dir.y = "up";
+      } else if (obstacles[i].y < player.y) {
+        obstacles[i].dir.y = "down";
+      }
+      
+      if (obstacles[i].dir.x == "left") {
+        obstacles[i].accel.left += obstacles[i].accel.speed;
+      } else if (obstacles[i].dir.x == "right") {
+        obstacles[i].accel.right += obstacles[i].accel.speed;
+      } 
+      if (obstacles[i].dir.y == "up") {
+        obstacles[i].accel.up += obstacles[i].accel.speed;
+      } else if (obstacles[i].dir.y == "down") {
+        if (obstacles[i].accel.down < obstacles[i].cap) {
+          obstacles[i].accel.down += obstacles[i].accel.speed;
+        } else {
+          obstacles[i].accel.down = obstacles[i].cap;
+        }
+      }
+    }
+    for (i = 0; i < 4; i++) {
+      if (obstacles[i].accel.right > 0 && obstacles[i].dir.x != "right") {
+        obstacles[i].accel.right -= obstacle.decelSpeed;
+      } else if (obstacles[i].accel.right < 0 && obstacles[i].dir.x != "right") {
+        obstacles[i].accel.right = 0;
+      }
+      if (obstacles[i].accel.left > 0 && obstacles[i].dir.x != "left") {
+        obstacles[i].accel.left -= obstacle.decelSpeed;
+      } else if (obstacles[i].accel.left < 0 && obstacles[i].dir.x != "left") {
+        obstacles[i].accel.left = 0;
+      }
+      if (obstacles[i].accel.up > 0 && obstacles[i].dir.y != "up") {
+        obstacles[i].accel.up -= obstacle.decelSpeed;
+      } else if (obstacles[i].accel.up < 0 && obstacles[i].dir.y != "up") {
+        obstacles[i].accel.up = 0;
+      }
+      if (obstacles[i].accel.down > 0 && obstacles[i].dir.y != "down") {
+        obstacles[i].accel.down -= obstacle.decelSpeed;
+      } else if (obstacles[i].accel.down < 0 && obstacles[i].dir.x != "down") {
+        obstacles[i].accel.down = 0;
+      }
+      obstacles[i].x += obstacles[i].accel.right;
+      obstacles[i].x -= obstacles[i].accel.left;
+      obstacles[i].y += obstacles[i].accel.down;
+      obstacles[i].y -= obstacles[i].accel.up;
+    }
+    obstacles[4].x += obstacles[4].speed;
+    obstacles[4].y += obstacles[4].speed;
+    obstacles[5].x -= obstacles[5].speed;
+    obstacles[5].y -= obstacles[5].speed;
+  }
+  
+  // Test for & handle collisions
+  if (player.x + player.size < 0) {
+    player.x = s.width / 2;
+  } else if (player.x > s.width / 2) {
+    player.x = 0;
+  } else if (player.y < -1 * player.size) {
+    player.y = s.height / 2;
+  } else if (player.y > s.height / 2) {
+    player.y = 0;
+  }
+  var i;
+  for (i = 0; i < 6; i++) {
+    if (obstacles[i].x + obstacle.size < 0) {
+      obstacles[i].x = s.width / 2;
+    } else if (obstacles[i].x > s.width / 2) {
+      obstacles[i].x = 0;
+    } else if (obstacles[i].y < -1 * obstacle.size) {
+      obstacles[i].y = s.height / 2;
+    } else if (obstacles[i].y > s.height / 2) {
+      obstacles[i].y = 0;
+    }
+  }
+  
+  // Drawing
+  ctx.fillStyle = 'rgba(' + screen.r + ', ' + screen.g + ', ' + screen.b + ', 1)';
+  ctx.fillRect (0, 0, s.width, s.height);  
+  ctx.fillStyle = 'rgba(150, 150, 150, 0.9)';
+  ctx.font = "15px Verdana";
+  ctx.fillText(Math.floor(time) / 10, 5, margin / 4);  
+  var i; for (i = 0; i < 6; i++) {
+    ctx.fillStyle = 'rgba(' + obstacles[i].r + ', ' + obstacles[i].g + ', ' + obstacles[i].b + ', 0.5)';
+    ctx.fillRect(
+      obstacles[i].x - obstacle.border, 
+      obstacles[i].y - obstacle.border, 
+      obstacle.size + obstacle.border * 2, 
+      obstacle.size + obstacle.border * 2
+    );
+  }
+  ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+  ctx.fillRect(player.x - 3, player.y - 3, player.size + 6, player.size + 6);
+  for (i = 0; i < 6; i++) {
+    ctx.fillStyle = 'rgb(' + obstacles[i].r + ', ' + obstacles[i].g + ', ' + obstacles[i].b + ')';
+    ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacle.size, obstacle.size);
+  }
+  ctx.fillStyle = 'rgb(' + player.r + ', ' + player.g + ', ' + player.b + ')';
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+  
+  // Motion trails
+  trail.splice(0, 0, player.x, player.y);
+  trail.splice(trailLength * 2, 2);
+  var alpha;
+  for (i = 0; i < trailLength; i++) {
+    alpha = 1 / i - 1 / trailLength;
+    var alphaColor = 255 - 10 * i;
+    ctx.fillStyle = 'rgba(' + player.r + ', ' + player.g + ', ' + player.b + ', ' + alpha + ')';
+    ctx.fillRect(trail[i * 2], trail[i * 2 + 1], player.size, player.size);
+  }
+  
+  // Obstacle motion trail
+  for (i = 0; i < 6; i++) {
+    obstacles[i].trail.splice(0, 0, obstacles[i].x, obstacles[i].y);
+    obstacles[i].trail.splice(trailLength * 2, 2);
+    var c;
+    for (c = 0; c < trailLength; c++) {
+      var alphaObstacle = 1 / c - 1 / trailLength;
+      ctx.fillStyle = 'rgba(' + obstacles[i].r + ', ' + obstacles[i].g + ', ' + obstacles[i].b + ', ' + alphaObstacle + ')';
+      ctx.fillRect(obstacles[i].trail[c * 2], obstacles[i].trail[c * 2 + 1], obstacle.size, obstacle.size);
+    }
+  }
+  for (i = 0; i < 6; i++) {
+    if (player.x < obstacles[i].x + obstacle.size
+        && player.x + player.size > obstacles[i].x
+        && player.y < obstacles[i].y + obstacle.size
+        && player.y + player.size > obstacles[i].y) {
+      accel.left = accel.right = accel.up = accel.down = 0;
+      player.lives --;
+      dir = "";
+      started = "false";
+      trail.splice(0, trail.length);
+      for (i = 0; i < 6; i++) {
+        obstacles[i].x = obstacles[i].startPos.x;
+        obstacles[i].y = obstacles[i].startPos.y;
+        obstacles[i].accel.left = obstacles[i].accel.right = obstacles[i].accel.up = obstacles[i].accel.down = 0;
+      }
+      for (i = 0; i < 4; i++) {
+        obstacles[i].accel.speed = obstacles[i].accel.baseSpeed;
+      }
+      for (i = 4; i < 6; i++) {
+        obstacles[i].speed = obstacles[i].baseSpeed;
+      }
+      player.x = player.startPos.x;
+      player.y = player.startPos.y;
+    }
+  }
+}
+
+
+/*
+Game Code
+*/
+
+// Event listener
+var dir;
+w.addEventListener("keydown", function(e) {
+  if (started == "false") {
+    time = 0;
+  }
+  if (e.keyCode == 37 || e.keyCode == 65) {
+    dir = "left";
+    fast = "false";
+  } else if (e.keyCode == 38 || e.keyCode == 87) {
+    dir = "up";
+    fast = "false";
+  } else if (e.keyCode == 39 || e.keyCode == 68) {
+    dir = "right";
+    fast = "false";
+  } else if (e.keyCode == 40 || e.keyCode == 83) {
+    dir = "down";
+    fast = "false";
+  } else if (e.keyCode == 32) {
+    fast = "true";
+  } else {
+    dir = "";
+    started = "false";
+    fast = "false";
+    accel.right = accel.left = accel.up = accel.down = 0;
+  }
+  started = "true";
+});
+
+var timer = setInterval(count, 100);
+var gameloop = setInterval(runGameLoop, 10);
+
+function count() {
+  if (started == "true") {
+    time ++;
+  }
+}
+
+    </script>
+  </body>
+</html>
